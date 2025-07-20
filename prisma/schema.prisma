@@ -14,15 +14,20 @@ datasource db {
 }
 
 model UploadedFile {
-  id           String   @id @default(cuid())
-  filename     String
-  originalName String
-  fileSize     BigInt
-  mimeType     String?
-  discordUrl   String   @unique @db.VarChar(1000)
-  uploadedAt   DateTime @default(now())
+  id                  String   @id @default(cuid())
+  filename            String
+  originalName        String
+  fileSize            BigInt
+  mimeType            String?
+  discordUrl          String   @db.VarChar(1000)
+  discordMessageId    String?  @db.VarChar(50)
+  discordAttachmentId String?  @db.VarChar(50)
+  uploadedAt          DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
 
   @@index([uploadedAt])
   @@index([filename])
+  @@index([discordMessageId])
+  @@index([updatedAt])
   @@map("uploaded_files")
 }

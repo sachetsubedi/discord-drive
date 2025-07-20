@@ -166,22 +166,29 @@ export default function FilesPage() {
         setCurrentPage(1);
     }, [searchTerm, selectedFileType, sortBy]);
 
-    const downloadFile = async (url: string, filename: string) => {
+    const downloadFile = async (file: StoredFile) => {
         try {
-            // Use our download API to proxy the file and force download
-            const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+            // Use our enhanced download API with file ID for URL refresh capability
+            const downloadUrl = `/api/download?fileId=${encodeURIComponent(file.id)}&filename=${encodeURIComponent(file.originalName)}`;
 
             const link = document.createElement('a');
             link.href = downloadUrl;
-            link.download = filename;
+            link.download = file.originalName;
             link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         } catch (error) {
             console.error('Download failed:', error);
-            // Fallback: open in new tab
-            window.open(url, '_blank');
+            // Fallback: try direct URL
+            try {
+                const fallbackUrl = `/api/download?url=${encodeURIComponent(file.discordUrl)}&filename=${encodeURIComponent(file.originalName)}`;
+                window.open(fallbackUrl, '_blank');
+            } catch (fallbackError) {
+                console.error('Fallback download failed:', fallbackError);
+                // Last resort: open Discord URL directly
+                window.open(file.discordUrl, '_blank');
+            }
         }
     };
 
@@ -371,7 +378,7 @@ export default function FilesPage() {
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
-                                                    onClick={() => downloadFile(file.discordUrl, file.originalName)}
+                                                    onClick={() => downloadFile(file)}
                                                     className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 >
                                                     <Download className="h-4 w-4" />
@@ -543,7 +550,7 @@ export default function FilesPage() {
                                         <p className="text-gray-600 mb-4">
                                             Preview not available for this file type.
                                         </p>
-                                        <Button onClick={() => downloadFile(fileToView.discordUrl, fileToView.originalName)}>
+                                        <Button onClick={() => downloadFile(fileToView)}>
                                             <Download className="h-4 w-4 mr-2" />
                                             Download File
                                         </Button>
@@ -557,7 +564,7 @@ export default function FilesPage() {
                                 Close
                             </Button>
                             {fileToView && (
-                                <Button onClick={() => downloadFile(fileToView.discordUrl, fileToView.originalName)}>
+                                <Button onClick={() => downloadFile(fileToView)}>
                                     <Download className="h-4 w-4 mr-2" />
                                     Download
                                 </Button>

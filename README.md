@@ -1,6 +1,43 @@
 # Discord Drive
 
-A modern file upload application that stores files on Discord and indexes them in a MySQL database for easy management and retrieval.
+A modern file upload application that stores files on Discord and indexes them in a MySQL database6. **Manage Files**: View metadata, download, or delete files with confirmation dialogs 7. **Bot Management** (if configured): Visit `/admin` to crawl Discord channels and refresh URLs 8. **Logout**: Use the logout button to securely end your session 9. **Database Management**: Use `pnpm db:studio` to view data in Prisma Studio
+
+## 🤖 Discord Bot Features
+
+**Important**: Discord attachment URLs expire after some time. The bot feature helps maintain permanent access to your files.
+
+### Why Use the Bot?
+
+- **Permanent Access**: Discord URLs expire, but the bot can refresh them anytime
+- **Bulk Operations**: Crawl entire channels to index existing files
+- **Automatic Refresh**: URLs are automatically refreshed when they expire
+- **Resume Support**: Large crawls can be resumed from where they left off
+
+### Bot Setup
+
+1. **Create Discord Bot**:
+
+   - Go to https://discord.com/developers/applications
+   - Create application → Add Bot → Copy token
+   - Add `DISCORD_BOT_TOKEN` to your `.env`
+
+2. **Invite Bot to Server**:
+
+   - Generate invite URL with "Read Message History" permission
+   - Get channel ID and add `DISCORD_CHANNEL_ID` to `.env`
+
+3. **Admin Operations**:
+   - Visit `/admin` to access bot controls
+   - **Crawl**: Index all messages in the channel (handles pagination automatically)
+   - **Refresh**: Update expired URLs for all files
+   - **Status**: Check crawl progress and bot connectivity
+
+### How It Works
+
+- **Automatic Refresh**: When downloading files, URLs are checked and refreshed if expired
+- **Smart Downloads**: Falls back gracefully if bot features aren't configured
+- **Rate Limiting**: Respects Discord's API limits (50 requests/minute)
+- **Resume Support**: Large crawls save progress and can be resumedr easy management and retrieval.
 
 ## ✨ Features
 
@@ -14,6 +51,11 @@ A modern file upload application that stores files on Discord and indexes them i
 - 🔗 **Discord integration** for reliable file storage
 - 🔐 **Secure authentication** with JWT and HTTP-only cookies
 - 🗑️ **File management** with view, download, and delete functionality
+- 🤖 **Discord Bot Integration** using **HTTP API only** (firewall-friendly, no WebSocket required)
+- 🔄 **Automatic URL refresh** to prevent expired links
+- ⚡ **Smart download handling** with fallback mechanisms
+- 📄 **Pagination & filtering** for large file collections
+- 🖼️ **Optimized image loading** with quality adjustment
 
 ## 🚀 Quick Start
 
@@ -33,11 +75,21 @@ A modern file upload application that stores files on Discord and indexes them i
    pnpm install
    ```
 
-2. **Set up Discord webhook**:
+2. **Set up Discord webhook and bot**:
+
+   **For file uploads**:
 
    - Create a Discord server and channel
    - Go to channel settings → Integrations → Webhooks
    - Create a new webhook and copy the URL
+
+   **For permanent file access (optional but recommended)**:
+
+   - Go to Discord Developer Portal: https://discord.com/developers/applications
+   - Create a new application and add a bot
+   - Copy the bot token
+   - Invite the bot to your server with "Read Message History" permission
+   - Get your channel ID (enable Developer Mode in Discord, right-click channel → Copy ID)
 
 3. **Configure environment**:
 
@@ -52,8 +104,16 @@ A modern file upload application that stores files on Discord and indexes them i
    AUTH_PASSWORD=your_secure_password
    JWT_SECRET=your_long_random_jwt_secret_key_here_make_it_very_long
 
-   # Discord Webhook
+   # Discord Webhook (required for uploads)
    DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+   NEXT_PUBLIC_DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+
+   # Discord Bot (optional but recommended for permanent file access)
+   DISCORD_BOT_TOKEN=your_discord_bot_token_here
+   DISCORD_CHANNEL_ID=your_channel_id_here
+
+   # Optional: For scheduled URL refresh protection
+   CRON_SECRET=your_random_cron_secret_here
    ```
 
 4. **Set up database**:
@@ -123,20 +183,28 @@ pnpm db:reset     # Reset database
 ├── app/
 │   ├── api/
 │   │   ├── auth/           # Authentication API routes
-│   │   └── files/          # File management API routes
-│   ├── files/              # File gallery page
+│   │   ├── files/          # File management API routes
+│   │   ├── download/       # Enhanced download with URL refresh
+│   │   ├── discord-bot/    # Discord bot operations API
+│   │   └── refresh-urls/   # Scheduled URL refresh endpoint
+│   ├── admin/              # Discord bot management page
+│   ├── files/              # File gallery page with pagination
 │   ├── login/              # Login page
 │   ├── layout.tsx          # Root layout with auth provider
 │   └── page.tsx            # Main upload page
-├── components/ui/          # shadcn/ui components
+├── components/
+│   ├── ui/                 # shadcn/ui components
+│   ├── ImageWithLoader.tsx # Optimized image loading component
+│   └── FileCardSkeleton.tsx # Loading skeleton for files
 ├── lib/
-│   ├── auth.tsx           # Authentication context
-│   ├── axios.ts           # Axios configuration
-│   ├── prisma.ts          # Prisma client setup
-│   └── utils.ts           # Utility functions
+│   ├── auth.tsx               # Authentication context
+│   ├── axios.ts               # Axios configuration
+│   ├── http-discord-crawler.ts # HTTP-based Discord bot service (no WebSocket)
+│   ├── prisma.ts              # Prisma client setup
+│   └── utils.ts               # Utility functions
 ├── prisma/
-│   ├── schema.prisma      # Database schema
-│   └── migrations/        # Database migrations
+│   ├── schema.prisma      # Enhanced database schema
+│   └── migrations/        # Database migrations (including bot fields)
 ├── middleware.ts          # Route protection middleware
 └── public/                # Static assets
 ```
@@ -157,6 +225,13 @@ JWT_SECRET=your_long_random_jwt_secret_key_here_make_it_very_long
 # Discord Integration
 DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 NEXT_PUBLIC_DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+
+# Discord Bot (Optional - for permanent file access)
+DISCORD_BOT_TOKEN=your_discord_bot_token_here
+DISCORD_CHANNEL_ID=your_channel_id_here
+
+# Optional: For scheduled URL refresh protection
+CRON_SECRET=your_random_cron_secret_here
 ```
 
 **Important**:
@@ -166,10 +241,12 @@ NEXT_PUBLIC_DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 - Use a strong, unique password for `AUTH_PASSWORD`
 - Generate a long, random string for `JWT_SECRET` (at least 32 characters)
 - Get your Discord webhook URL from your Discord server settings
+- **Bot features are optional** - the app works fine with just webhook URLs
+- If using bot features, ensure the bot has "Read Message History" permission
 
 ## 📊 Database Schema
 
-The application uses a simple but effective schema:
+The application uses an enhanced schema to support Discord bot integration:
 
 ```prisma
 model UploadedFile {
@@ -181,9 +258,21 @@ model UploadedFile {
   discordUrl  String   @unique @db.Text
   uploadedAt  DateTime @default(now())
 
+  // Discord Bot Integration Fields
+  discordMessageId     String? // For URL refresh capability
+  discordAttachmentId  String? // For precise attachment matching
+  updatedAt           DateTime @default(now()) @updatedAt
+
   @@map("UploadedFile")
 }
 ```
+
+**Schema Evolution**:
+
+- Original fields support basic file storage and retrieval
+- Discord bot fields enable permanent URL management
+- `updatedAt` tracks when URLs were last refreshed
+- Allows files to be uploaded via webhook and later indexed by bot
 
 ## 🎨 UI Components
 
