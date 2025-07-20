@@ -381,11 +381,11 @@ export default function AdminPage() {
                         <ol className="space-y-2">
                             <li>Create a Discord Bot in the Discord Developer Portal</li>
                             <li>Add the bot token to your <code>.env</code> file as <code>DISCORD_BOT_TOKEN</code></li>
-                            <li>Invite the bot to your server with "Read Message History" permissions</li>
+                            <li>Invite the bot to your server with &quot;Read Message History&quot; permissions</li>
                             <li>Set the <code>DISCORD_CHANNEL_ID</code> in your <code>.env</code> file</li>
-                            <li><strong>Use "Test Permissions" to verify the bot setup is correct</strong></li>
-                            <li>Use "Start Crawl" to index all historical messages via HTTP API</li>
-                            <li>Use "Refresh URLs" periodically to update expired Discord links</li>
+                            <li><strong>Use &quot;Test Permissions&quot; to verify the bot setup is correct</strong></li>
+                            <li>Use &quot;Start Crawl&quot; to index all historical messages via HTTP API</li>
+                            <li>Use &quot;Refresh URLs&quot; periodically to update expired Discord links</li>
                         </ol>
                     </CardContent>
                 </Card>
