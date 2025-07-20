@@ -1,13 +1,17 @@
 "use client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import axiosInstance from "@/lib/axios";
-import { Calendar, Download, Eye, File, LogOut, Trash2 } from "lucide-react";
+import { Archive, Calendar, Download, Eye, File, FileText, Filter, Image as ImageIcon, LogOut, Music, Search, Trash2, Video } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface StoredFile {
     id: string;
@@ -25,6 +29,16 @@ export default function FilesPage() {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<StoredFile | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [viewDialogOpen, setViewDialogOpen] = useState(false);
+    const [fileToView, setFileToView] = useState<StoredFile | null>(null);
+
+    // Pagination and filtering states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedFileType, setSelectedFileType] = useState("all");
+    const [sortBy, setSortBy] = useState("newest");
+
+    const itemsPerPage = 12;
     const { logout } = useAuth();
 
     useEffect(() => {
@@ -48,7 +62,7 @@ export default function FilesPage() {
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytesNum) / Math.log(k));
-        return parseFloat((bytesNum / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        return Math.round(bytesNum / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     };
 
     const formatDate = (dateString: string) => {
@@ -60,6 +74,95 @@ export default function FilesPage() {
             minute: '2-digit',
         });
     };
+
+    const getFileType = (mimeType: string | null, filename: string) => {
+        if (!mimeType) {
+            // Fallback to file extension
+            const ext = filename.split('.').pop()?.toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '')) return 'image';
+            if (['mp4', 'avi', 'mov', 'wmv', 'flv'].includes(ext || '')) return 'video';
+            if (['mp3', 'wav', 'ogg', 'flac'].includes(ext || '')) return 'audio';
+            if (['pdf', 'doc', 'docx', 'txt'].includes(ext || '')) return 'document';
+            if (['zip', 'rar', '7z', 'tar'].includes(ext || '')) return 'archive';
+            return 'other';
+        }
+
+        if (mimeType.startsWith('image/')) return 'image';
+        if (mimeType.startsWith('video/')) return 'video';
+        if (mimeType.startsWith('audio/')) return 'audio';
+        if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text')) return 'document';
+        if (mimeType.includes('zip') || mimeType.includes('compressed')) return 'archive';
+        return 'other';
+    };
+
+    const getFileIcon = (type: string) => {
+        switch (type) {
+            case 'image': return <ImageIcon className="h-4 w-4" />;
+            case 'video': return <Video className="h-4 w-4" />;
+            case 'audio': return <Music className="h-4 w-4" />;
+            case 'document': return <FileText className="h-4 w-4" />;
+            case 'archive': return <Archive className="h-4 w-4" />;
+            default: return <File className="h-4 w-4" />;
+        }
+    };
+
+    const getFileTypeColor = (type: string) => {
+        switch (type) {
+            case 'image': return 'bg-green-100 text-green-800';
+            case 'video': return 'bg-purple-100 text-purple-800';
+            case 'audio': return 'bg-yellow-100 text-yellow-800';
+            case 'document': return 'bg-blue-100 text-blue-800';
+            case 'archive': return 'bg-orange-100 text-orange-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const isImage = (mimeType: string | null, filename: string) => {
+        return getFileType(mimeType, filename) === 'image';
+    };
+
+    // Filtered and sorted files
+    const filteredAndSortedFiles = useMemo(() => {
+        let filtered = files.filter(file => {
+            const matchesSearch = file.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                file.filename.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const fileType = getFileType(file.mimeType, file.filename);
+            const matchesType = selectedFileType === 'all' || fileType === selectedFileType;
+
+            return matchesSearch && matchesType;
+        });
+
+        // Sort files
+        filtered.sort((a, b) => {
+            switch (sortBy) {
+                case 'newest':
+                    return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+                case 'oldest':
+                    return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+                case 'name':
+                    return a.originalName.localeCompare(b.originalName);
+                case 'size':
+                    return parseInt(b.fileSize) - parseInt(a.fileSize);
+                default:
+                    return 0;
+            }
+        });
+
+        return filtered;
+    }, [files, searchTerm, selectedFileType, sortBy]);
+
+    // Pagination
+    const totalPages = Math.ceil(filteredAndSortedFiles.length / itemsPerPage);
+    const paginatedFiles = filteredAndSortedFiles.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    // Reset to first page when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, selectedFileType, sortBy]);
 
     const downloadFile = async (url: string, filename: string) => {
         try {
@@ -75,7 +178,6 @@ export default function FilesPage() {
             window.URL.revokeObjectURL(downloadUrl);
         } catch (error) {
             console.error('Download failed:', error);
-            // Fallback to opening in new tab
             window.open(url, '_blank');
         }
     };
@@ -83,6 +185,11 @@ export default function FilesPage() {
     const handleDeleteClick = (file: StoredFile) => {
         setFileToDelete(file);
         setDeleteDialogOpen(true);
+    };
+
+    const handleViewClick = (file: StoredFile) => {
+        setFileToView(file);
+        setViewDialogOpen(true);
     };
 
     const handleDeleteConfirm = async () => {
@@ -107,16 +214,6 @@ export default function FilesPage() {
         setFileToDelete(null);
     };
 
-    const getFileTypeColor = (mimeType: string | null) => {
-        if (!mimeType) return 'bg-gray-500';
-        if (mimeType.startsWith('image/')) return 'bg-green-500';
-        if (mimeType.startsWith('video/')) return 'bg-blue-500';
-        if (mimeType.startsWith('audio/')) return 'bg-purple-500';
-        if (mimeType.includes('pdf')) return 'bg-red-500';
-        if (mimeType.includes('text/') || mimeType.includes('document')) return 'bg-yellow-500';
-        return 'bg-gray-500';
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -133,164 +230,343 @@ export default function FilesPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
             <div className="max-w-6xl mx-auto space-y-6">
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-4xl font-bold text-gray-900">All Uploads</h1>
-                        <p className="text-gray-600">Manage and view all your uploaded files</p>
+                        <h1 className="text-4xl font-bold text-gray-900 mb-2">All Uploads</h1>
+                        <p className="text-gray-600">
+                            {filteredAndSortedFiles.length} file{filteredAndSortedFiles.length !== 1 ? 's' : ''} found
+                        </p>
                     </div>
-                    <div className="flex space-x-2">
+                    <div className="flex gap-3">
                         <Link href="/">
                             <Button variant="outline">
-                                Back to Upload
+                                <File className="h-4 w-4 mr-2" />
+                                Upload Files
                             </Button>
                         </Link>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={logout}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                        >
+                        <Button variant="outline" onClick={logout}>
                             <LogOut className="h-4 w-4 mr-2" />
                             Logout
                         </Button>
                     </div>
                 </div>
 
-                {files.length === 0 ? (
+                {/* Filters */}
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Input
+                                    placeholder="Search files..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+
+                            <Select value={selectedFileType} onValueChange={setSelectedFileType}>
+                                <SelectTrigger>
+                                    <Filter className="h-4 w-4 mr-2" />
+                                    <SelectValue placeholder="File type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Types</SelectItem>
+                                    <SelectItem value="image">Images</SelectItem>
+                                    <SelectItem value="video">Videos</SelectItem>
+                                    <SelectItem value="audio">Audio</SelectItem>
+                                    <SelectItem value="document">Documents</SelectItem>
+                                    <SelectItem value="archive">Archives</SelectItem>
+                                    <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="newest">Newest First</SelectItem>
+                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                    <SelectItem value="name">Name A-Z</SelectItem>
+                                    <SelectItem value="size">Largest First</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="text-sm text-gray-600 flex items-center">
+                                Showing {paginatedFiles.length} of {filteredAndSortedFiles.length}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Files Grid */}
+                {paginatedFiles.length === 0 ? (
                     <Card>
-                        <CardContent className="text-center py-12">
-                            <File className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-xl font-semibold text-gray-900 mb-2">No files uploaded yet</h3>
-                            <p className="text-gray-500 mb-4">Start uploading files to see them here</p>
+                        <CardContent className="pt-6 text-center py-12">
+                            <File className="h-16 w-16 mx-auto text-gray-400 mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No files found</h3>
+                            <p className="text-gray-600 mb-4">
+                                {searchTerm || selectedFileType !== 'all'
+                                    ? 'Try adjusting your filters to see more files.'
+                                    : 'Start by uploading some files to see them here.'
+                                }
+                            </p>
                             <Link href="/">
                                 <Button>
+                                    <File className="h-4 w-4 mr-2" />
                                     Upload Files
                                 </Button>
                             </Link>
                         </CardContent>
                     </Card>
                 ) : (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Uploaded Files ({files.length})</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {files.map((file) => (
-                                    <Card key={file.id} className="hover:shadow-md transition-shadow">
-                                        <CardContent className="p-4">
-                                            <div className="space-y-3">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center space-x-2">
-                                                        <File className="h-4 w-4 text-gray-500" />
-                                                        <Badge
-                                                            variant="secondary"
-                                                            className={`${getFileTypeColor(file.mimeType)} text-white text-xs`}
-                                                        >
-                                                            {file.mimeType?.split('/')[0] || 'file'}
-                                                        </Badge>
-                                                    </div>
-                                                    <div className="flex space-x-1">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            asChild
-                                                            title="View file"
-                                                        >
-                                                            <a
-                                                                href={file.discordUrl}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                            >
-                                                                <Eye className="h-3 w-3" />
-                                                            </a>
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => downloadFile(file.discordUrl, file.originalName)}
-                                                            title="Download file"
-                                                        >
-                                                            <Download className="h-3 w-3" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => handleDeleteClick(file)}
-                                                            title="Delete file"
-                                                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {paginatedFiles.map((file) => {
+                            const fileType = getFileType(file.mimeType, file.filename);
+                            const isImageFile = isImage(file.mimeType, file.filename);
 
-                                                <div>
-                                                    <h4 className="font-semibold text-sm text-gray-900 truncate" title={file.originalName}>
-                                                        {file.originalName}
-                                                    </h4>
-                                                    <p className="text-xs text-gray-500 truncate" title={file.filename}>
-                                                        {file.filename}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-xs text-gray-500">
-                                                    <span>{formatFileSize(file.fileSize)}</span>
-                                                    <div className="flex items-center space-x-1">
-                                                        <Calendar className="h-3 w-3" />
-                                                        <span>{formatDate(file.uploadedAt)}</span>
-                                                    </div>
-                                                </div>
-
-                                                {file.mimeType?.startsWith('image/') && (
-                                                    <div className="mt-2">
-                                                        <img
-                                                            src={file.discordUrl}
-                                                            alt={file.originalName}
-                                                            className="w-full h-24 object-cover rounded border"
-                                                            loading="lazy"
-                                                        />
-                                                    </div>
-                                                )}
+                            return (
+                                <Card key={file.id} className="group hover:shadow-lg transition-shadow duration-200">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-start justify-between">
+                                            <Badge className={`${getFileTypeColor(fileType)} text-xs px-2 py-1`}>
+                                                {getFileIcon(fileType)}
+                                                <span className="ml-1 capitalize">{fileType}</span>
+                                            </Badge>
+                                            <div className="flex gap-1">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleViewClick(file)}
+                                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => downloadFile(file.discordUrl, file.originalName)}
+                                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteClick(file)}
+                                                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-red-600 hover:text-red-700"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-0">
+                                        {/* Image Preview */}
+                                        {isImageFile ? (
+                                            <div className="relative aspect-video mb-3 overflow-hidden rounded-lg bg-gray-100">
+                                                <Image
+                                                    src={file.discordUrl}
+                                                    alt={file.originalName}
+                                                    fill
+                                                    className="object-cover transition-transform group-hover:scale-105"
+                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                                                    quality={75}
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors cursor-pointer"
+                                                    onClick={() => handleViewClick(file)} />
+                                            </div>
+                                        ) : (
+                                            <div className="aspect-video mb-3 bg-gray-100 rounded-lg flex items-center justify-center">
+                                                <div className="text-gray-400 text-2xl">
+                                                    {getFileIcon(fileType)}
+                                                </div>
+                                            </div>
+                                        )}
 
-            {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Delete File</DialogTitle>
-                        <DialogDescription>
-                            Are you sure you want to delete this file?
-                            This action cannot be undone and will only remove the file from the database.
-                            The file will still exist on Discord.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={handleDeleteCancel}
-                            disabled={deleting}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={handleDeleteConfirm}
-                            disabled={deleting}
-                        >
-                            {deleting ? "Deleting..." : "Delete"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                                        {/* File Info */}
+                                        <div className="space-y-2">
+                                            <h3 className="font-medium text-sm text-gray-900 line-clamp-2 leading-tight">
+                                                {file.originalName}
+                                            </h3>
+                                            <div className="flex items-center justify-between text-xs text-gray-500">
+                                                <span>{formatFileSize(file.fileSize)}</span>
+                                                <div className="flex items-center">
+                                                    <Calendar className="h-3 w-3 mr-1" />
+                                                    {formatDate(file.uploadedAt)}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center">
+                        <Pagination>
+                            <PaginationContent>
+                                <PaginationItem>
+                                    <PaginationPrevious
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+
+                                {[...Array(totalPages)].map((_, index) => {
+                                    const page = index + 1;
+                                    if (
+                                        page === 1 ||
+                                        page === totalPages ||
+                                        (page >= currentPage - 2 && page <= currentPage + 2)
+                                    ) {
+                                        return (
+                                            <PaginationItem key={page}>
+                                                <PaginationLink
+                                                    onClick={() => setCurrentPage(page)}
+                                                    isActive={currentPage === page}
+                                                    className="cursor-pointer"
+                                                >
+                                                    {page}
+                                                </PaginationLink>
+                                            </PaginationItem>
+                                        );
+                                    } else if (
+                                        page === currentPage - 3 ||
+                                        page === currentPage + 3
+                                    ) {
+                                        return (
+                                            <PaginationItem key={page}>
+                                                <PaginationEllipsis />
+                                            </PaginationItem>
+                                        );
+                                    }
+                                    return null;
+                                })}
+
+                                <PaginationItem>
+                                    <PaginationNext
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                                    />
+                                </PaginationItem>
+                            </PaginationContent>
+                        </Pagination>
+                    </div>
+                )}
+
+                {/* View Dialog */}
+                <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                        <DialogHeader>
+                            <DialogTitle className="text-left">
+                                {fileToView?.originalName}
+                            </DialogTitle>
+                            <DialogDescription className="text-left">
+                                {fileToView && (
+                                    <div className="flex items-center gap-4 text-sm">
+                                        <span>{formatFileSize(fileToView.fileSize)}</span>
+                                        <span>•</span>
+                                        <span>{formatDate(fileToView.uploadedAt)}</span>
+                                        <span>•</span>
+                                        <Badge className={getFileTypeColor(getFileType(fileToView.mimeType, fileToView.filename))}>
+                                            {getFileType(fileToView.mimeType, fileToView.filename)}
+                                        </Badge>
+                                    </div>
+                                )}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        {fileToView && (
+                            <div className="mt-4">
+                                {isImage(fileToView.mimeType, fileToView.filename) ? (
+                                    <div className="relative w-full max-h-[60vh] overflow-hidden rounded-lg">
+                                        <Image
+                                            src={fileToView.discordUrl}
+                                            alt={fileToView.originalName}
+                                            width={800}
+                                            height={600}
+                                            className="w-full h-auto object-contain"
+                                            quality={100}
+                                            priority
+                                        />
+                                    </div>
+                                ) : fileToView.mimeType?.startsWith('video/') ? (
+                                    <video
+                                        src={fileToView.discordUrl}
+                                        controls
+                                        className="w-full max-h-[60vh] rounded-lg"
+                                    >
+                                        Your browser does not support video playback.
+                                    </video>
+                                ) : fileToView.mimeType?.startsWith('audio/') ? (
+                                    <audio
+                                        src={fileToView.discordUrl}
+                                        controls
+                                        className="w-full"
+                                    >
+                                        Your browser does not support audio playback.
+                                    </audio>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="text-6xl text-gray-400 mb-4">
+                                            {getFileIcon(getFileType(fileToView.mimeType, fileToView.filename))}
+                                        </div>
+                                        <p className="text-gray-600 mb-4">
+                                            Preview not available for this file type.
+                                        </p>
+                                        <Button onClick={() => downloadFile(fileToView.discordUrl, fileToView.originalName)}>
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Download File
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <DialogFooter className="mt-6">
+                            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
+                                Close
+                            </Button>
+                            {fileToView && (
+                                <Button onClick={() => downloadFile(fileToView.discordUrl, fileToView.originalName)}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Download
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Dialog */}
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Delete File</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to delete "{fileToDelete?.originalName}"? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={handleDeleteCancel}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={handleDeleteConfirm}
+                                disabled={deleting}
+                            >
+                                {deleting ? "Deleting..." : "Delete"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </div>
     );
 }
