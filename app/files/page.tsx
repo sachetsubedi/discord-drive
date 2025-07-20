@@ -10,7 +10,7 @@ import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, Pagi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import axiosInstance from "@/lib/axios";
-import { Archive, Calendar, Download, Eye, File, FileText, Filter, Image as ImageIcon, LogOut, Music, Search, Trash2, Video } from "lucide-react";
+import { Archive, Calendar, Download, Eye, File, FileText, Filter, Image as ImageIcon, LogOut, Music, Search, Settings, Trash2, Video } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -40,11 +40,17 @@ export default function FilesPage() {
     const [selectedFileType, setSelectedFileType] = useState("all");
     const [sortBy, setSortBy] = useState("newest");
 
+    // Auto-crawl state
+    const [autoCrawlComplete, setAutoCrawlComplete] = useState(false);
+    const [crawlStatus, setCrawlStatus] = useState<string>('');
+
     const itemsPerPage = 12;
     const { logout } = useAuth();
 
     useEffect(() => {
         fetchFiles();
+        // Trigger auto-crawl when component mounts
+        performAutoCrawl();
     }, []);
 
     const fetchFiles = async () => {
@@ -55,6 +61,46 @@ export default function FilesPage() {
             console.error('Error fetching files:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const performAutoCrawl = async () => {
+        try {
+            setCrawlStatus('Checking for new files...');
+            
+            // First check if bot is configured
+            const botStatusResponse = await axiosInstance.get('/api/discord-bot');
+            if (!botStatusResponse.data.hasToken) {
+                setCrawlStatus('Bot not configured');
+                setAutoCrawlComplete(true);
+                return;
+            }
+
+            // Perform crawl operation
+            const crawlResponse = await axiosInstance.post('/api/discord-bot', {
+                action: 'crawl'
+            }, {
+                timeout: 120000 // 2 minutes timeout for auto-crawl
+            });
+
+            if (crawlResponse.data.totalAttachments > 0) {
+                setCrawlStatus(`Found ${crawlResponse.data.totalAttachments} new files`);
+                // Refresh the files list after successful crawl
+                setTimeout(() => {
+                    fetchFiles();
+                }, 1000);
+            } else {
+                setCrawlStatus('No new files found');
+            }
+        } catch (error) {
+            console.error('Auto-crawl failed:', error);
+            setCrawlStatus('Auto-crawl completed');
+        } finally {
+            setAutoCrawlComplete(true);
+            // Clear status message after 3 seconds
+            setTimeout(() => {
+                setCrawlStatus('');
+            }, 3000);
         }
     };
 
@@ -265,11 +311,31 @@ export default function FilesPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-4xl font-bold text-gray-900 mb-2">All Uploads</h1>
-                        <p className="text-gray-600">
-                            {filteredAndSortedFiles.length} file{filteredAndSortedFiles.length !== 1 ? 's' : ''} found
-                        </p>
+                        <div className="flex items-center gap-3">
+                            <p className="text-gray-600">
+                                {filteredAndSortedFiles.length} file{filteredAndSortedFiles.length !== 1 ? 's' : ''} found
+                            </p>
+                            {!autoCrawlComplete && crawlStatus && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 rounded-full text-blue-700 text-sm">
+                                    <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                                    {crawlStatus}
+                                </div>
+                            )}
+                            {autoCrawlComplete && crawlStatus && (
+                                <div className="flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full text-green-700 text-sm">
+                                    <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                                    {crawlStatus}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div className="flex gap-3">
+                        <Link href="/admin">
+                            <Button variant="outline">
+                                <Settings className="h-4 w-4 mr-2" />
+                                Admin
+                            </Button>
+                        </Link>
                         <Link href="/">
                             <Button variant="outline">
                                 <File className="h-4 w-4 mr-2" />
@@ -596,6 +662,13 @@ export default function FilesPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                {/* Auto-crawl Status */}
+                {crawlStatus && (
+                    <div className="fixed bottom-4 right-4 bg-white rounded-lg shadow-md p-4 z-50">
+                        <p className="text-sm text-gray-700">{crawlStatus}</p>
+                    </div>
+                )}
             </div>
         </div>
     );
