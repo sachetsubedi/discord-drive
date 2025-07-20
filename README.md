@@ -156,6 +156,7 @@ JWT_SECRET=your_long_random_jwt_secret_key_here_make_it_very_long
 
 # Discord Integration
 DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
+NEXT_PUBLIC_DISCORD_WEBHOOK_URL=your_discord_webhook_url_here
 ```
 
 **Important**:
