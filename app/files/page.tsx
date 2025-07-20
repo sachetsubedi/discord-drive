@@ -1,4 +1,6 @@
 "use client";
+import FileCardSkeleton from "@/components/FileCardSkeleton";
+import ImageWithLoader from "@/components/ImageWithLoader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -123,7 +125,7 @@ export default function FilesPage() {
 
     // Filtered and sorted files
     const filteredAndSortedFiles = useMemo(() => {
-        let filtered = files.filter(file => {
+        const filtered = files.filter(file => {
             const matchesSearch = file.originalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 file.filename.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -166,18 +168,19 @@ export default function FilesPage() {
 
     const downloadFile = async (url: string, filename: string) => {
         try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const downloadUrl = window.URL.createObjectURL(blob);
+            // Use our download API to proxy the file and force download
+            const downloadUrl = `/api/download?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+
             const link = document.createElement('a');
             link.href = downloadUrl;
             link.download = filename;
+            link.style.display = 'none';
             document.body.appendChild(link);
             link.click();
-            link.remove();
-            window.URL.revokeObjectURL(downloadUrl);
+            document.body.removeChild(link);
         } catch (error) {
             console.error('Download failed:', error);
+            // Fallback: open in new tab
             window.open(url, '_blank');
         }
     };
@@ -217,10 +220,31 @@ export default function FilesPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center">
-                        <h1 className="text-4xl font-bold text-gray-900 mb-2">All Uploads</h1>
-                        <p className="text-gray-600 mb-8">Loading your files...</p>
+                <div className="max-w-6xl mx-auto space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h1 className="text-4xl font-bold text-gray-900 mb-2">All Uploads</h1>
+                            <p className="text-gray-600">Loading your files...</p>
+                        </div>
+                        <div className="flex gap-3">
+                            <Link href="/">
+                                <Button variant="outline">
+                                    <File className="h-4 w-4 mr-2" />
+                                    Upload Files
+                                </Button>
+                            </Link>
+                            <Button variant="outline" onClick={logout}>
+                                <LogOut className="h-4 w-4 mr-2" />
+                                Logout
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Loading Skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {Array.from({ length: 12 }).map((_, index) => (
+                            <FileCardSkeleton key={index} />
+                        ))}
                     </div>
                 </div>
             </div>
@@ -367,16 +391,15 @@ export default function FilesPage() {
                                         {/* Image Preview */}
                                         {isImageFile ? (
                                             <div className="relative aspect-video mb-3 overflow-hidden rounded-lg bg-gray-100">
-                                                <Image
+                                                <ImageWithLoader
                                                     src={file.discordUrl}
                                                     alt={file.originalName}
-                                                    fill
-                                                    className="object-cover transition-transform group-hover:scale-105"
-                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                                                    quality={75}
+                                                    className="transition-transform group-hover:scale-105 cursor-pointer"
+                                                    quality={25}
+                                                    onClick={() => handleViewClick(file)}
+                                                    fill={true}
                                                 />
-                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors cursor-pointer"
-                                                    onClick={() => handleViewClick(file)} />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
                                             </div>
                                         ) : (
                                             <div className="aspect-video mb-3 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -469,15 +492,15 @@ export default function FilesPage() {
                             </DialogTitle>
                             <DialogDescription className="text-left">
                                 {fileToView && (
-                                    <div className="flex items-center gap-4 text-sm">
+                                    <>
                                         <span>{formatFileSize(fileToView.fileSize)}</span>
-                                        <span>•</span>
+                                        <span className="mx-2">•</span>
                                         <span>{formatDate(fileToView.uploadedAt)}</span>
-                                        <span>•</span>
+                                        <span className="mx-2">•</span>
                                         <Badge className={getFileTypeColor(getFileType(fileToView.mimeType, fileToView.filename))}>
                                             {getFileType(fileToView.mimeType, fileToView.filename)}
                                         </Badge>
-                                    </div>
+                                    </>
                                 )}
                             </DialogDescription>
                         </DialogHeader>
@@ -489,10 +512,10 @@ export default function FilesPage() {
                                         <Image
                                             src={fileToView.discordUrl}
                                             alt={fileToView.originalName}
-                                            width={800}
-                                            height={600}
+                                            width={1200}
+                                            height={800}
                                             className="w-full h-auto object-contain"
-                                            quality={100}
+                                            quality={95}
                                             priority
                                         />
                                     </div>
@@ -549,7 +572,7 @@ export default function FilesPage() {
                         <DialogHeader>
                             <DialogTitle>Delete File</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to delete "{fileToDelete?.originalName}"? This action cannot be undone.
+                                Are you sure you want to delete this file? This action cannot be undone.
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>
