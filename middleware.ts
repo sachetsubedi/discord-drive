@@ -3,7 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
   // Only protect specific routes
-  const protectedPaths = ["/", "/files", "/admin", "/api/files", "/api/discord-bot", "/api/refresh-urls"];
+  const protectedPaths = [
+    "/",
+    "/files",
+    "/admin",
+    "/api/files",
+    "/api/discord-bot",
+    "/api/refresh-urls",
+  ];
   const isProtectedPath = protectedPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||

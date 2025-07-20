@@ -59,9 +59,12 @@ export default function AdminPage() {
         setLoading(true);
         setError(null);
         try {
+            // Use longer timeout for crawling (10 minutes)
             const response = await axiosInstance.post('/api/discord-bot', {
                 action: 'crawl',
                 resumeFromId: crawlProgress?.lastMessageId
+            }, {
+                timeout: 600000 // 10 minutes
             });
             setCrawlProgress(response.data);
         } catch (error) {
@@ -76,8 +79,11 @@ export default function AdminPage() {
         setLoading(true);
         setError(null);
         try {
+            // Use longer timeout for URL refresh (5 minutes)
             const response = await axiosInstance.post('/api/discord-bot', {
                 action: 'refresh'
+            }, {
+                timeout: 300000 // 5 minutes
             });
             const method = response.data.method || 'HTTP API';
             alert(`Successfully refreshed ${response.data.refreshedCount} URLs via ${method}`);
@@ -363,6 +369,11 @@ export default function AdminPage() {
                         {loading && (
                             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                                 <p className="text-blue-800">Operation in progress... This may take several minutes.</p>
+                                <p className="text-blue-600 text-sm mt-1">
+                                    • Crawling operations can take 5-10 minutes for large channels<br/>
+                                    • URL refresh operations typically take 1-5 minutes<br/>
+                                    • Please keep this page open and wait for completion
+                                </p>
                             </div>
                         )}
                     </CardContent>
