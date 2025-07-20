@@ -370,8 +370,8 @@ export default function AdminPage() {
                             <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                                 <p className="text-blue-800">Operation in progress... This may take several minutes.</p>
                                 <p className="text-blue-600 text-sm mt-1">
-                                    • Crawling operations can take 5-10 minutes for large channels<br/>
-                                    • URL refresh operations typically take 1-5 minutes<br/>
+                                    • Crawling operations can take 5-10 minutes for large channels<br />
+                                    • URL refresh operations typically take 1-5 minutes<br />
                                     • Please keep this page open and wait for completion
                                 </p>
                             </div>

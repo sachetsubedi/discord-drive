@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const files = await prisma.uploadedFile.findMany({
+      where: {
+        deleted: false, // Only show non-deleted files
+      },
       orderBy: {
         uploadedAt: "desc",
       },
@@ -68,11 +71,19 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.uploadedFile.delete({
+    // Soft delete: mark as deleted instead of removing from database
+    await prisma.uploadedFile.update({
       where: { id },
+      data: {
+        deleted: true,
+        updatedAt: new Date(),
+      },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: "File marked as deleted",
+    });
   } catch (error) {
     console.error("Error deleting file:", error);
     return NextResponse.json(

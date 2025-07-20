@@ -244,17 +244,31 @@ class HttpDiscordCrawler {
     message: HttpDiscordMessage
   ): Promise<void> {
     try {
-      // Check if file already exists in database
+      // Check if file already exists in database using Discord-specific identifiers
       const existingFile = await prisma.uploadedFile.findFirst({
         where: {
           OR: [
-            { filename: attachment.filename || "" },
+            {
+              discordMessageId: message.id,
+              discordAttachmentId: attachment.id,
+            },
             { discordUrl: attachment.url },
+            {
+              filename: attachment.filename || "",
+              // Only match by filename if it has Discord identifiers to avoid false matches
+              discordMessageId: { not: null },
+            },
           ],
         },
       });
 
       if (existingFile) {
+        // If file was soft-deleted, skip it (don't re-add)
+        if (existingFile.deleted) {
+          console.log(`Skipping soft-deleted file: ${attachment.filename}`);
+          return;
+        }
+
         // Update the Discord URL if it's different (URL refresh)
         if (existingFile.discordUrl !== attachment.url) {
           await prisma.uploadedFile.update({
@@ -309,7 +323,7 @@ class HttpDiscordCrawler {
     try {
       console.log("Starting HTTP-based URL refresh...");
 
-      // Find files that might have expired URLs (older than 6 hours)
+      // Find files that might have expired URLs (older than 6 hours) and are not deleted
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
       const filesToRefresh = await prisma.uploadedFile.findMany({
         where: {
@@ -319,6 +333,7 @@ class HttpDiscordCrawler {
           discordMessageId: {
             not: null,
           },
+          deleted: false, // Exclude soft-deleted files
         },
       });
 
@@ -395,8 +410,10 @@ class HttpDiscordCrawler {
         where: { id: fileId },
       });
 
-      if (!file || !file.discordMessageId) {
-        console.log(`File ${fileId} not found or missing Discord message ID`);
+      if (!file || !file.discordMessageId || file.deleted) {
+        console.log(
+          `File ${fileId} not found, missing Discord message ID, or is deleted`
+        );
         return false;
       }
 

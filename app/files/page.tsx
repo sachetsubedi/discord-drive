@@ -579,7 +579,7 @@ export default function FilesPage() {
                         <DialogHeader>
                             <DialogTitle>Delete File</DialogTitle>
                             <DialogDescription>
-                                Are you sure you want to delete this file? This action cannot be undone.
+                                Are you sure you want to delete this file? The file will be hidden from your gallery and won't be re-added during future crawls.
                             </DialogDescription>
                         </DialogHeader>
                         <DialogFooter>

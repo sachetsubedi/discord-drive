@@ -24,10 +24,12 @@ model UploadedFile {
   discordAttachmentId String?  @db.VarChar(50)
   uploadedAt          DateTime @default(now())
   updatedAt           DateTime @default(now()) @updatedAt
+  deleted             Boolean  @default(false)
 
   @@index([uploadedAt])
   @@index([filename])
   @@index([discordMessageId])
   @@index([updatedAt])
+  @@index([deleted])
   @@map("uploaded_files")
 }

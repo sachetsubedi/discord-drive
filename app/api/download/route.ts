@@ -28,7 +28,14 @@ export async function GET(request: NextRequest) {
           where: { id: fileId },
         });
 
-        if (file) {
+        if (file?.deleted) {
+          return NextResponse.json(
+            { error: "File has been deleted" },
+            { status: 404 }
+          );
+        }
+
+        if (file && !file.deleted) {
           // Check if URL might be expired (older than 6 hours)
           const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
           const urlMightBeExpired = file.updatedAt < sixHoursAgo;
