@@ -67,7 +67,6 @@ export default function FilesPage() {
     const performAutoCrawl = async () => {
         try {
             setCrawlStatus('Checking for new files...');
-            
             // First check if bot is configured
             const botStatusResponse = await axiosInstance.get('/api/discord-bot');
             if (!botStatusResponse.data.hasToken) {
@@ -558,7 +557,7 @@ export default function FilesPage() {
 
                 {/* View Dialog */}
                 <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                    <DialogContent className=" overflow-auto">
                         <DialogHeader>
                             <DialogTitle className="text-left">
                                 {fileToView?.originalName}
