@@ -557,7 +557,7 @@ export default function FilesPage() {
 
                 {/* View Dialog */}
                 <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-                    <DialogContent className=" overflow-auto">
+                    <DialogContent className="w-fit h-fit overflow-auto">
                         <DialogHeader>
                             <DialogTitle className="text-left">
                                 {fileToView?.originalName}
