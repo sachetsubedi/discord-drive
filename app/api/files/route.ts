@@ -6,6 +6,29 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { filename, originalName, fileSize, mimeType, discordUrl } = body;
 
+    // If there are any existing records with the same discordUrl,
+    // mark them as deleted (soft delete) so the new record becomes the
+    // canonical/latest record for this URL.
+    try {
+      await prisma.uploadedFile.updateMany({
+        where: {
+          discordUrl,
+          deleted: false,
+        },
+        data: {
+          deleted: true,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      // Non-fatal: log and continue to create the new record
+      console.error(
+        "Error soft-deleting duplicate files for URL",
+        discordUrl,
+        err
+      );
+    }
+
     const uploadedFile = await prisma.uploadedFile.create({
       data: {
         filename,

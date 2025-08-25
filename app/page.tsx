@@ -7,7 +7,15 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/lib/auth";
 import axiosInstance from "@/lib/axios";
 import axios, { AxiosResponse } from "axios";
-import { AlertCircle, CheckCircle, Database, File, LogOut, Upload, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Database,
+  File,
+  LogOut,
+  Upload,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 
@@ -15,7 +23,7 @@ interface FileUpload {
   file: File;
   id: string;
   progress: number;
-  status: 'pending' | 'uploading' | 'success' | 'error';
+  status: "pending" | "uploading" | "success" | "error";
   url?: string;
   error?: string;
 }
@@ -29,13 +37,13 @@ export default function UploadPage() {
   const webhookURL = process.env.NEXT_PUBLIC_DISCORD_WEBHOOK_URL || "";
 
   const addFiles = (newFiles: File[]) => {
-    const fileUploads: FileUpload[] = newFiles.map(file => ({
+    const fileUploads: FileUpload[] = newFiles.map((file) => ({
       file,
       id: Math.random().toString(36).substr(2, 9),
       progress: 0,
-      status: 'pending' as const
+      status: "pending" as const,
     }));
-    setFiles(prev => [...prev, ...fileUploads]);
+    setFiles((prev) => [...prev, ...fileUploads]);
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -63,10 +71,10 @@ export default function UploadPage() {
   };
 
   const removeFile = (id: string) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles((prev) => prev.filter((f) => f.id !== id));
     // Reset file input to allow selecting the same files again
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -79,19 +87,23 @@ export default function UploadPage() {
     formData.append("file", fileUpload.file);
 
     try {
-      setFiles(prev => prev.map(f =>
-        f.id === fileUpload.id
-          ? { ...f, status: 'uploading' as const, progress: 0 }
-          : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileUpload.id
+            ? { ...f, status: "uploading" as const, progress: 0 }
+            : f
+        )
+      );
 
       // Simulate progress updates
       const progressInterval = setInterval(() => {
-        setFiles(prev => prev.map(f =>
-          f.id === fileUpload.id && f.status === 'uploading'
-            ? { ...f, progress: Math.min(f.progress + 10, 90) }
-            : f
-        ));
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === fileUpload.id && f.status === "uploading"
+              ? { ...f, progress: Math.min(f.progress + 10, 90) }
+              : f
+          )
+        );
       }, 200);
 
       const response: AxiosResponse<{ attachments: { url: string }[] }> =
@@ -107,7 +119,7 @@ export default function UploadPage() {
 
       // Save file data to database
       try {
-        await axiosInstance.post('/api/files', {
+        await axiosInstance.post("/api/files", {
           filename: fileUpload.file.name,
           originalName: fileUpload.file.name,
           fileSize: fileUpload.file.size,
@@ -115,66 +127,77 @@ export default function UploadPage() {
           discordUrl: discordUrl,
         });
       } catch (dbError) {
-        console.error('Error saving to database:', dbError);
+        console.error("Error saving to database:", dbError);
         // Continue even if database save fails
       }
 
-      setFiles(prev => prev.map(f =>
-        f.id === fileUpload.id
-          ? {
-            ...f,
-            status: 'success' as const,
-            progress: 100,
-            url: discordUrl
-          }
-          : f
-      ));
-
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileUpload.id
+            ? {
+                ...f,
+                status: "success" as const,
+                progress: 100,
+                url: discordUrl,
+              }
+            : f
+        )
+      );
     } catch (error: any) {
-      setFiles(prev => prev.map(f =>
-        f.id === fileUpload.id
-          ? {
-            ...f,
-            status: 'error' as const,
-            progress: 0,
-            error: error.message || 'Upload failed'
-          }
-          : f
-      ));
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === fileUpload.id
+            ? {
+                ...f,
+                status: "error" as const,
+                progress: 0,
+                error: error.message || "Upload failed",
+              }
+            : f
+        )
+      );
     }
   };
 
   const uploadAllFiles = async () => {
-    const pendingFiles = files.filter(f => f.status === 'pending');
+    const pendingFiles = files.filter((f) => f.status === "pending");
     for (const file of pendingFiles) {
       await uploadFile(file);
     }
   };
 
-  const getStatusColor = (status: FileUpload['status']) => {
+  const getStatusColor = (status: FileUpload["status"]) => {
     switch (status) {
-      case 'pending': return 'bg-gray-500';
-      case 'uploading': return 'bg-blue-500';
-      case 'success': return 'bg-green-500';
-      case 'error': return 'bg-red-500';
+      case "pending":
+        return "bg-gray-500";
+      case "uploading":
+        return "bg-blue-500";
+      case "success":
+        return "bg-green-500";
+      case "error":
+        return "bg-red-500";
     }
   };
 
-  const getStatusIcon = (status: FileUpload['status']) => {
+  const getStatusIcon = (status: FileUpload["status"]) => {
     switch (status) {
-      case 'pending': return <File className="h-4 w-4" />;
-      case 'uploading': return <Upload className="h-4 w-4 animate-pulse" />;
-      case 'success': return <CheckCircle className="h-4 w-4" />;
-      case 'error': return <AlertCircle className="h-4 w-4" />;
+      case "pending":
+        return <File className="h-4 w-4" />;
+      case "uploading":
+        return <Upload className="h-4 w-4 animate-pulse" />;
+      case "success":
+        return <CheckCircle className="h-4 w-4" />;
+      case "error":
+        return <AlertCircle className="h-4 w-4" />;
     }
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return "0 Bytes";
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ["Bytes", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
   return (
@@ -183,7 +206,9 @@ export default function UploadPage() {
         <div className="flex justify-between items-center">
           <div className="text-center flex-1">
             <h1 className="text-4xl font-bold text-gray-900">Discord Drive</h1>
-            <p className="text-gray-600">Upload your files to Discord with ease</p>
+            <p className="text-gray-600">
+              Upload your files to Discord with ease
+            </p>
             <div className="flex justify-center space-x-2 mt-4">
               <Link href="/files">
                 <Button variant="outline" size="sm">
@@ -208,7 +233,9 @@ export default function UploadPage() {
         <Card className="border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
           <CardContent className="p-8">
             <div
-              className={`text-center space-y-4 ${isDragOver ? 'bg-blue-50' : ''} rounded-lg p-6 transition-colors`}
+              className={`text-center space-y-4 ${
+                isDragOver ? "bg-blue-50" : ""
+              } rounded-lg p-6 transition-colors`}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
@@ -249,7 +276,7 @@ export default function UploadPage() {
               <div className="space-x-2">
                 <Button
                   onClick={uploadAllFiles}
-                  disabled={files.every(f => f.status !== 'pending')}
+                  disabled={files.every((f) => f.status !== "pending")}
                   size="sm"
                 >
                   Upload All
@@ -259,7 +286,7 @@ export default function UploadPage() {
                     setFiles([]);
                     // Reset file input to allow selecting the same files again
                     if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
+                      fileInputRef.current.value = "";
                     }
                   }}
                   variant="outline"
@@ -285,7 +312,9 @@ export default function UploadPage() {
                       </h4>
                       <Badge
                         variant="secondary"
-                        className={`${getStatusColor(fileUpload.status)} text-white`}
+                        className={`${getStatusColor(
+                          fileUpload.status
+                        )} text-white`}
                       >
                         {fileUpload.status}
                       </Badge>
@@ -293,10 +322,10 @@ export default function UploadPage() {
                     <p className="text-sm text-gray-500">
                       {formatFileSize(fileUpload.file.size)}
                     </p>
-                    {fileUpload.status === 'uploading' && (
+                    {fileUpload.status === "uploading" && (
                       <Progress value={fileUpload.progress} className="mt-2" />
                     )}
-                    {fileUpload.status === 'error' && fileUpload.error && (
+                    {fileUpload.status === "error" && fileUpload.error && (
                       <Alert className="mt-2">
                         <AlertCircle className="h-4 w-4" />
                         <AlertDescription className="text-sm">
@@ -304,7 +333,7 @@ export default function UploadPage() {
                         </AlertDescription>
                       </Alert>
                     )}
-                    {fileUpload.status === 'success' && fileUpload.url && (
+                    {fileUpload.status === "success" && fileUpload.url && (
                       <div className="mt-2">
                         <a
                           href={fileUpload.url}
@@ -318,7 +347,7 @@ export default function UploadPage() {
                     )}
                   </div>
                   <div className="flex-shrink-0 space-x-2">
-                    {fileUpload.status === 'pending' && (
+                    {fileUpload.status === "pending" && (
                       <Button
                         onClick={() => uploadFile(fileUpload)}
                         size="sm"
