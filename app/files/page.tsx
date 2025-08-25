@@ -359,7 +359,7 @@ export default function FilesPage() {
                   Upload Files
                 </Button>
               </Link>
-              <Button variant="outline" onClick={logout}>
+              <Button variant="ghost" onClick={logout}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </Button>
@@ -418,7 +418,11 @@ export default function FilesPage() {
                 Upload Files
               </Button>
             </Link>
-            <Button variant="outline" onClick={logout}>
+            <Button
+              variant="ghost"
+              onClick={logout}
+              className="text-destructive hover:text-red-600"
+            >
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
