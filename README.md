@@ -70,7 +70,7 @@ A modern file upload application that stores files on Discord and indexes them i
 1. **Clone and install dependencies**:
 
    ```bash
-   git clone [https://github.com/sachetsubedi/discord-drive](https://github.com/sachetsubedi/discord-drive)
+   git clone https://github.com/sachetsubedi/discord-drive
    cd discord-drive
    pnpm install
    ```
