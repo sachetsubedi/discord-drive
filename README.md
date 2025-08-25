@@ -1,6 +1,7 @@
 # Discord Drive - By Sachet Subedi
 
-A modern file upload application that stores files on Discord and indexes them in a MySQL database6. **Manage Files**: View metadata, download, or delete files with confirmation dialogs 7. **Bot Management** (if configured): Visit `/admin` to crawl Discord channels and refresh URLs 8. **Logout**: Use the logout button to securely end your session 9. **Database Management**: Use `pnpm db:studio` to view data in Prisma Studio
+A modern file upload application that stores files on Discord and indexes them in a MySQL database.
+
 
 ## 🤖 Discord Bot Features
 
