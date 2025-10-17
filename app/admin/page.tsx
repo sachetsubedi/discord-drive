@@ -1,5 +1,4 @@
 "use client";
-import SelectCommand from "@/components/SelectCommand/SelectCommand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +162,6 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <SelectCommand options={[{label:"Option 1", value:"option1"}, {label:"Option 2", value:"option2"}]} />
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
